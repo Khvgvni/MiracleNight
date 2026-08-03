@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 
 type Quiz = { question: string; options: string[]; correct: number; detail: string };
 
@@ -34,14 +34,18 @@ const quizzes: Quiz[] = [
 
 const meals = {
   lunch: { title: "Обед в Большом зале", subtitle: "Что подать после дневных приключений?", options: ["Мясо на мангале", "Стейк из сёмги с картофелем"] },
-  dinner: { title: "Ужин при свечах", subtitle: "Что появится на столе под вечер?", options: ["Мясо на мангале", "Стейки из сёмги"] },
+  dinner: { title: "Ужин при свечах", subtitle: "Можно выбрать сразу несколько вариантов", options: ["Мясо на мангале", "Стейки из сёмги", "Шампиньоны"] },
   drinks: { title: "Выбор волшебных напитков", subtitle: "Можно выбрать сразу несколько вариантов", options: ["Белое вино", "Красное вино", "Джин с тоником"] },
 };
 
 const steps = ["quiz0", "lunch", "quiz1", "quiz2", "dinner", "quiz3", "drinks", "quiz4", "final"] as const;
 
 export default function Home() {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const submissionUrl = "https://script.google.com/macros/s/AKfycbwvYYOsVEP9AZISeJf3YwyxVJSHP-0RILCofz2sd2mkIfnvaT9dFi2xC6wgJO5qOiavjg/exec";
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [started, setStarted] = useState(false);
+  const [musicOn, setMusicOn] = useState(false);
   const [step, setStep] = useState(0);
   const [wrong, setWrong] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -51,13 +55,12 @@ export default function Home() {
   const [trap, setTrap] = useState(false);
   const [trapAnswer, setTrapAnswer] = useState("");
   const [trapResult, setTrapResult] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
 
   const current = steps[step];
   const progress = started ? ((step + 1) / steps.length) * 100 : 0;
-
-  const summary = useMemo(() => encodeURIComponent(
-    `Моё волшебное меню ✨\n\nОбед: ${choices.lunch || "—"}\nУжин: ${choices.dinner || "—"}\nНапитки: ${Array.isArray(choices.drinks) ? choices.drinks.join(", ") : "—"}\nЕщё хочется попробовать: ${wish || "Пусть будет сюрприз"}\n\nОтвет: Я с тобой! 🪄`
-  ), [choices, wish]);
 
   function answerQuiz(index: number, selected: number) {
     if (selected !== quizzes[index].correct) { setWrong(true); return; }
@@ -66,12 +69,55 @@ export default function Home() {
 
   function next() { setRevealed(false); setWrong(false); setStep(value => Math.min(value + 1, steps.length - 1)); }
 
+  async function openLetter() {
+    setStarted(true);
+    if (!audioRef.current) return;
+    audioRef.current.volume = 0.28;
+    try { await audioRef.current.play(); setMusicOn(true); } catch { setMusicOn(false); }
+  }
+
+  async function toggleMusic() {
+    if (!audioRef.current) return;
+    if (audioRef.current.paused) {
+      try { await audioRef.current.play(); setMusicOn(true); } catch { setMusicOn(false); }
+    } else {
+      audioRef.current.pause();
+      setMusicOn(false);
+    }
+  }
+
+  async function submitAnswers() {
+    if (submitting || submitted) return;
+    setSubmitting(true);
+    setSubmitError(false);
+    try {
+      await fetch(submissionUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          name: "Кушпита Анна Сергеевна",
+          lunch: choices.lunch || "",
+          dinner: Array.isArray(choices.dinner) ? choices.dinner : [],
+          drinks: Array.isArray(choices.drinks) ? choices.drinks : [],
+          wish,
+          answer: "Я с тобой",
+        }),
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitError(true);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function chooseMeal(key: keyof typeof meals, value: string) {
-    if (key !== "drinks") { setChoices(prev => ({ ...prev, [key]: value })); return; }
+    if (key === "lunch") { setChoices(prev => ({ ...prev, [key]: value })); return; }
     setChoices(prev => {
-      const currentDrinks = Array.isArray(prev.drinks) ? prev.drinks : [];
-      const drinks = currentDrinks.includes(value) ? currentDrinks.filter(item => item !== value) : [...currentDrinks, value];
-      return { ...prev, drinks };
+      const currentValues = Array.isArray(prev[key]) ? prev[key] as string[] : [];
+      const values = currentValues.includes(value) ? currentValues.filter(item => item !== value) : [...currentValues, value];
+      return { ...prev, [key]: values };
     });
   }
 
@@ -90,7 +136,12 @@ export default function Home() {
 
   return (
     <main className="world">
-      <div className="castle" aria-hidden="true" />
+      <audio ref={audioRef} src={`${basePath}/magic-theme.mp3`} loop preload="auto" />
+      <div
+        className="castle"
+        aria-hidden="true"
+        style={{ backgroundImage: `linear-gradient(180deg,rgba(3,5,10,.16),rgba(3,5,10,.5) 55%,#05070b 100%),url('${basePath}/wizard-castle.png')` }}
+      />
       <div className="mist" aria-hidden="true" />
       <div className="sparks" aria-hidden="true" />
       <header>
@@ -99,6 +150,7 @@ export default function Home() {
         <div className="step-count">{started ? `${step + 1} / ${steps.length}` : "Совиная почта"}</div>
       </header>
       <div className="progress"><i style={{ width: `${progress}%` }} /></div>
+      {started && <button className="sound-toggle" onClick={toggleMusic} aria-label={musicOn ? "Выключить музыку" : "Включить музыку"} title={musicOn ? "Выключить музыку" : "Включить музыку"}>{musicOn ? "♫" : "♪"}<span>{musicOn ? "Музыка" : "Без звука"}</span></button>}
 
       {!started && (
         <section className="hero enter">
@@ -107,7 +159,7 @@ export default function Home() {
           <div className="recipient">Кушпита Анна Сергеевна</div>
           <h1>Официальное<br /><em>приглашение</em></h1>
           <p>Настоящим письмом Вы приглашаетесь в тайное загородное путешествие на сутки. Для подтверждения участия Вам надлежит пройти пять магических испытаний и составить меню предстоящего вечера.</p>
-          <button className="gold-button" onClick={() => setStarted(true)}>Открыть письмо <span>➜</span></button>
+          <button className="gold-button" onClick={openLetter}>Открыть письмо <span>➜</span></button>
           <small>Торжественно обещаем: впереди только шалость</small>
         </section>
       )}
@@ -138,15 +190,15 @@ export default function Home() {
           <p className="subtitle">{meals[mealKey].subtitle}</p>
           <div className={`meal-grid ${meals[mealKey].options.length === 2 ? "two" : ""}`}>
             {meals[mealKey].options.map((option, index) => (
-              <button key={option} className={(mealKey === "drinks" ? Array.isArray(choices.drinks) && choices.drinks.includes(option) : choices[mealKey] === option) ? "meal-card selected" : "meal-card"} onClick={() => chooseMeal(mealKey, option)}>
-                <div className="plate"><span>{mealKey === "drinks" ? ["♧", "♦", "✧"][index] : index === 0 ? "♨" : "≈"}</span></div>
+              <button key={option} className={(mealKey !== "lunch" ? Array.isArray(choices[mealKey]) && (choices[mealKey] as string[]).includes(option) : choices[mealKey] === option) ? "meal-card selected" : "meal-card"} onClick={() => chooseMeal(mealKey, option)}>
+                <div className="plate"><span>{mealKey === "drinks" ? ["♧", "♦", "✧"][index] : mealKey === "dinner" && index === 2 ? "♣" : index === 0 ? "♨" : "≈"}</span></div>
                 <b>{option}</b>
-                <small>{mealKey === "drinks" ? "Налить в зачарованный бокал" : index === 0 ? "Дымок, угли и аромат специй" : "Нежное филе и золотистый гарнир"}</small>
-                <i>{(mealKey === "drinks" ? Array.isArray(choices.drinks) && choices.drinks.includes(option) : choices[mealKey] === option) ? "Выбрано ✓" : "Выбрать"}</i>
+                <small>{mealKey === "drinks" ? "Налить в зачарованный бокал" : mealKey === "dinner" && index === 2 ? "Румяные шампиньоны с ароматными травами" : index === 0 ? "Дымок, угли и аромат специй" : "Нежное филе и золотистый гарнир"}</small>
+                <i>{(mealKey !== "lunch" ? Array.isArray(choices[mealKey]) && (choices[mealKey] as string[]).includes(option) : choices[mealKey] === option) ? "Выбрано ✓" : "Выбрать"}</i>
               </button>
             ))}
           </div>
-          <button className="gold-button" disabled={mealKey === "drinks" ? !Array.isArray(choices.drinks) || choices.drinks.length === 0 : !choices[mealKey]} onClick={next}>Закрепить выбор <span>➜</span></button>
+          <button className="gold-button" disabled={mealKey !== "lunch" ? !Array.isArray(choices[mealKey]) || (choices[mealKey] as string[]).length === 0 : !choices[mealKey]} onClick={next}>Закрепить выбор <span>➜</span></button>
         </section>
       )}
 
@@ -164,7 +216,9 @@ export default function Home() {
             <button className={accepted ? "yes active" : "yes"} onClick={() => setAccepted(true)}>Я с тобой ✦</button>
             <button className="think" onClick={() => { setTrap(true); setTrapResult(""); setTrapAnswer(""); }}>Мне нужно подумать</button>
           </div>
-          {accepted && <a className="send" href={`https://wa.me/?text=${summary}`} target="_blank" rel="noreferrer">Отправить выбор совиной почтой ➜</a>}
+          {accepted && !submitted && <button className="send" onClick={submitAnswers} disabled={submitting}>{submitting ? "Сова уже в пути…" : "Отправить ответы совиной почтой ➜"}</button>}
+          {submitted && <div className="submit-success">Ответы сохранены в магической книге ✦</div>}
+          {submitError && <div className="submit-error">Сова сбилась с пути. Попробуй отправить ещё раз.</div>}
         </section>
       )}
 
