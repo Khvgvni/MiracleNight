@@ -89,18 +89,19 @@ export default function Home() {
       <div className="mist" aria-hidden="true" />
       <div className="sparks" aria-hidden="true" />
       <header>
-        <div className="crest"><span>✦</span><b>W</b><span>✦</span></div>
-        <div className="header-title">Совершенно секретное послание</div>
+        <div className="crest"><span>✦</span><b>A</b><span>✦</span></div>
+        <div className="header-title">Официальное магическое приглашение</div>
         <div className="step-count">{started ? `${step + 1} / ${steps.length}` : "Совиная почта"}</div>
       </header>
       <div className="progress"><i style={{ width: `${progress}%` }} /></div>
 
       {!started && (
         <section className="hero enter">
-          <div className="letter-seal">W</div>
+          <div className="letter-seal">A</div>
           <p className="eyebrow">Доставлено лично в руки</p>
-          <h1>Твоя история<br /><em>начинается здесь</em></h1>
-          <p>Замок откроет двери только тому, кто пройдёт пять магических испытаний и составит идеальное меню для тайного путешествия.</p>
+          <div className="recipient">Кушпита Анна Сергеевна</div>
+          <h1>Официальное<br /><em>приглашение</em></h1>
+          <p>Настоящим письмом Вы приглашаетесь в тайное загородное путешествие на сутки. Для подтверждения участия Вам надлежит пройти пять магических испытаний и составить меню предстоящего вечера.</p>
           <button className="gold-button" onClick={() => setStarted(true)}>Открыть письмо <span>➜</span></button>
           <small>Торжественно обещаем: впереди только шалость</small>
         </section>
