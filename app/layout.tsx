@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Особенное письмо · Волшебное приглашение",
-  description: "Романтический квест и меню желаний для одного особенного приключения.",
+  title: "Твоя история начинается здесь · Волшебное приглашение",
+  description: "Пять магических испытаний и тайное приглашение в маленькое приключение.",
+  openGraph: {
+    title: "Твоя история начинается здесь",
+    description: "Совиная почта доставила тебе совершенно секретное приглашение.",
+    images: ["/wizard-castle.png"],
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

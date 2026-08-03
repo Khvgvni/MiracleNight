@@ -2,174 +2,177 @@
 
 import { useMemo, useState } from "react";
 
-type Pick = { title: string; note: string; icon: string };
+type Quiz = { question: string; options: string[]; correct: number; detail: string };
 
-const courses: { title: string; subtitle: string; options: Pick[] }[] = [
+const quizzes: Quiz[] = [
   {
-    title: "Утро в зачарованном доме",
-    subtitle: "Чем должна начинаться идеальная глава?",
-    options: [
-      { title: "Сырники с ягодами", note: "Сметана, мёд и немного магии", icon: "✦" },
-      { title: "Круассан и омлет", note: "Тёплый, хрустящий, неспешный", icon: "☀" },
-      { title: "Блины с начинками", note: "Сладкие и несладкие — сразу оба мира", icon: "☾" },
-    ],
+    question: "Какой формы шрам был на лбу у Гарри Поттера?",
+    options: ["Полумесяц", "Молния", "Звезда", "Руна"], correct: 1,
+    detail: "Молния открывает путь дальше. Очко факультету!",
   },
   {
-    title: "Главное блюдо вечера",
-    subtitle: "Что появится на столе после заклинания?",
-    options: [
-      { title: "Паста с креветками", note: "Сливочный соус и пармезан", icon: "♢" },
-      { title: "Стейк с овощами", note: "Сочный и приготовленный как ты любишь", icon: "♜" },
-      { title: "Лосось с картофелем", note: "Лёгкий, уютный и очень красивый", icon: "≈" },
-    ],
+    question: "Как звали гиппогрифа, которого спасли Гарри и Гермиона?",
+    options: ["Клювокрыл", "Арагог", "Нагайна", "Фоукс"], correct: 0,
+    detail: "Клювокрыл одобрительно склонил голову.",
   },
   {
-    title: "Сладкое заклинание",
-    subtitle: "Без десерта даже волшебство не считается",
-    options: [
-      { title: "Шоколадный фондан", note: "Тёплое сердце и ванильное мороженое", icon: "♥" },
-      { title: "Тирамису", note: "Воздушный, кофейный, почти невесомый", icon: "✧" },
-      { title: "Ягоды и чизкейк", note: "Нежная классика для уютного вечера", icon: "❋" },
-    ],
+    question: "Какое заклинание вызывает Патронуса?",
+    options: ["Люмос", "Экспеллиармус", "Экспекто Патронум", "Акцио"], correct: 2,
+    detail: "Серебряный Патронус осветил дорогу.",
   },
   {
-    title: "Напиток настроения",
-    subtitle: "Последний ингредиент нашего зелья",
-    options: [
-      { title: "Вино", note: "Белое, красное или игристое", icon: "♧" },
-      { title: "Какао с маршмеллоу", note: "Будто вернулись с зимней прогулки", icon: "☁" },
-      { title: "Авторский лимонад", note: "Свежий, ягодный и безалкогольный", icon: "✺" },
-    ],
+    question: "Что нужно сказать, чтобы открыть Карту Мародёров?",
+    options: ["Клянусь, что замышляю шалость", "Алохомора", "Тайное станет явным", "Я ищу приключений"], correct: 0,
+    detail: "Чернильные дорожки появились на пергаменте…",
+  },
+  {
+    question: "Кто подарил Гарри его первую метлу «Нимбус-2000»?",
+    options: ["Хагрид", "Дамблдор", "Минерва Макгонагалл", "Сириус Блэк"], correct: 2,
+    detail: "Профессор Макгонагалл знала толк в хороших сюрпризах.",
   },
 ];
 
-const riddles = [
-  {
-    eyebrow: "Испытание I · Тайная дверь",
-    title: "Что становится больше, если его перевернуть вверх ногами?",
-    answers: ["Число 6", "Луна", "Котёл"],
-    correct: 0,
-    hint: "Иногда магия — это просто другой угол зрения.",
-  },
-  {
-    eyebrow: "Испытание II · Заклинание тепла",
-    title: "Сложи первые буквы: Дом, Аромат, Тишина, Авантюра.",
-    answers: ["ДАТА", "ДОМ", "ТАЙНА"],
-    correct: 0,
-    hint: "Каждая глава начинается с правильного момента.",
-  },
-];
+const meals = {
+  lunch: { title: "Обед в Большом зале", subtitle: "Что подать после дневных приключений?", options: ["Мясо на мангале", "Стейк из сёмги с картофелем"] },
+  dinner: { title: "Ужин при свечах", subtitle: "Что появится на столе под вечер?", options: ["Мясо на мангале", "Стейки из сёмги"] },
+  drinks: { title: "Выбор волшебного напитка", subtitle: "Последний ингредиент идеального вечера", options: ["Белое вино", "Красное вино", "Джин с тоником"] },
+};
+
+const steps = ["quiz0", "lunch", "quiz1", "quiz2", "dinner", "quiz3", "drinks", "quiz4", "final"] as const;
 
 export default function Home() {
-  const [stage, setStage] = useState(0);
-  const [riddle, setRiddle] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [step, setStep] = useState(0);
   const [wrong, setWrong] = useState(false);
-  const [course, setCourse] = useState(0);
-  const [picks, setPicks] = useState<number[]>([]);
-  const [restrictions, setRestrictions] = useState("");
-  const [accepted, setAccepted] = useState<boolean | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [choices, setChoices] = useState<Record<string, string>>({});
+  const [wish, setWish] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const [trap, setTrap] = useState(false);
+  const [trapAnswer, setTrapAnswer] = useState("");
+  const [trapResult, setTrapResult] = useState("");
 
-  const progress = stage === 0 ? 8 : stage === 1 ? 20 + riddle * 15 : stage === 2 ? 52 + course * 10 : 100;
+  const current = steps[step];
+  const progress = started ? ((step + 1) / steps.length) * 100 : 0;
 
-  const message = useMemo(() => {
-    const chosen = picks.map((value, index) => `${courses[index].title}: ${courses[index].options[value]?.title}`).join("\n");
-    return encodeURIComponent(`Мой выбор для нашей волшебной поездки ✨\n\n${chosen}\n\nПожелания: ${restrictions || "нет"}\n\nОтвет на приглашение: ${accepted ? "Да, я отправляюсь!" : "Мне нужно немного времени"}`);
-  }, [picks, restrictions, accepted]);
+  const summary = useMemo(() => encodeURIComponent(
+    `Моё волшебное меню ✨\n\nОбед: ${choices.lunch || "—"}\nУжин: ${choices.dinner || "—"}\nНапиток: ${choices.drinks || "—"}\nЕщё хочется попробовать: ${wish || "Пусть будет сюрприз"}\n\nОтвет: Я с тобой! 🪄`
+  ), [choices, wish]);
 
-  function solve(answer: number) {
-    if (answer !== riddles[riddle].correct) {
-      setWrong(true);
-      return;
+  function answerQuiz(index: number, selected: number) {
+    if (selected !== quizzes[index].correct) { setWrong(true); return; }
+    setWrong(false); setRevealed(true);
+  }
+
+  function next() { setRevealed(false); setWrong(false); setStep(value => Math.min(value + 1, steps.length - 1)); }
+
+  function chooseMeal(key: keyof typeof meals, value: string) {
+    setChoices(prev => ({ ...prev, [key]: value }));
+  }
+
+  function submitTrap() {
+    if (trapAnswer.trim() === "713") {
+      setTrapResult("Невероятно! Даже Гермиона впечатлена. Но приключение всё равно зовёт ✦");
+    } else {
+      setTrapResult("Увы, неверно. Магический договор активирован: «Я с тобой» выбрано автоматически ✦");
     }
-    setWrong(false);
-    if (riddle < riddles.length - 1) setRiddle(riddle + 1);
-    else setStage(2);
+    setAccepted(true);
+    window.setTimeout(() => setTrap(false), 2600);
   }
 
-  function choose(value: number) {
-    const next = [...picks];
-    next[course] = value;
-    setPicks(next);
-  }
-
-  function nextCourse() {
-    if (course < courses.length - 1) setCourse(course + 1);
-    else setStage(3);
-  }
+  const quizIndex = current.startsWith("quiz") ? Number(current.replace("quiz", "")) : -1;
+  const mealKey = (["lunch", "dinner", "drinks"] as string[]).includes(current) ? current as keyof typeof meals : null;
 
   return (
     <main className="world">
-      <div className="stars" aria-hidden="true" />
-      <div className="topline">
-        <span className="sigil">W</span>
-        <span>Личное магическое послание</span>
-        <span className="chapter">Глава {Math.min(stage + 1, 4)} / 4</span>
-      </div>
+      <div className="castle" aria-hidden="true" />
+      <div className="mist" aria-hidden="true" />
+      <div className="sparks" aria-hidden="true" />
+      <header>
+        <div className="crest"><span>✦</span><b>W</b><span>✦</span></div>
+        <div className="header-title">Совершенно секретное послание</div>
+        <div className="step-count">{started ? `${step + 1} / ${steps.length}` : "Совиная почта"}</div>
+      </header>
       <div className="progress"><i style={{ width: `${progress}%` }} /></div>
 
-      {stage === 0 && (
-        <section className="hero page-enter">
-          <div className="owl-mark" aria-hidden="true"><span>✉</span></div>
-          <p className="eyebrow">Доставлено совиной почтой</p>
-          <h1>Тебе пришло<br /><em>особенное письмо</em></h1>
-          <p className="lead">В нём спрятан маршрут к одному уютному месту. Но сначала волшебнице предстоит пройти несколько испытаний.</p>
-          <button className="primary" onClick={() => setStage(1)}>Распечатать письмо <span>→</span></button>
-          <p className="whisper">Торжественно обещаем: никакой опасной магии</p>
+      {!started && (
+        <section className="hero enter">
+          <div className="letter-seal">W</div>
+          <p className="eyebrow">Доставлено лично в руки</p>
+          <h1>Твоя история<br /><em>начинается здесь</em></h1>
+          <p>Замок откроет двери только тому, кто пройдёт пять магических испытаний и составит идеальное меню для тайного путешествия.</p>
+          <button className="gold-button" onClick={() => setStarted(true)}>Открыть письмо <span>➜</span></button>
+          <small>Торжественно обещаем: впереди только шалость</small>
         </section>
       )}
 
-      {stage === 1 && (
-        <section className="card riddle page-enter" key={riddle}>
-          <div className="corner tl">✦</div><div className="corner br">✦</div>
-          <p className="eyebrow">{riddles[riddle].eyebrow}</p>
-          <div className="rune">{riddle === 0 ? "6↟" : "D·A·T·A"}</div>
-          <h2>{riddles[riddle].title}</h2>
-          <p className="hint">{riddles[riddle].hint}</p>
-          <div className="answer-grid">
-            {riddles[riddle].answers.map((answer, index) => (
-              <button key={answer} onClick={() => solve(index)}>{answer}<span>◇</span></button>
-            ))}
-          </div>
-          {wrong && <p className="wrong">Перо дрогнуло… Попробуй ещё раз ✦</p>}
-        </section>
-      )}
-
-      {stage === 2 && (
-        <section className="menu page-enter" key={course}>
-          <p className="eyebrow">Выбор {course + 1} из {courses.length} · Меню желаний</p>
-          <h2>{courses[course].title}</h2>
-          <p className="hint">{courses[course].subtitle}</p>
-          <div className="food-grid">
-            {courses[course].options.map((item, index) => (
-              <button className={picks[course] === index ? "food selected" : "food"} key={item.title} onClick={() => choose(index)}>
-                <span className="food-icon">{item.icon}</span>
-                <strong>{item.title}</strong><small>{item.note}</small>
-                <i>{picks[course] === index ? "Выбрано ✓" : "Выбрать"}</i>
+      {started && quizIndex >= 0 && (
+        <section className="parchment enter" key={current}>
+          <div className="paper-noise" />
+          <p className="eyebrow dark">Магическое испытание {quizIndex + 1} из 5</p>
+          <div className="quiz-symbol">{["ϟ", "♞", "☄", "⌁", "⚡"][quizIndex]}</div>
+          <h2>{quizzes[quizIndex].question}</h2>
+          <div className="quiz-options">
+            {quizzes[quizIndex].options.map((option, index) => (
+              <button key={option} onClick={() => answerQuiz(quizIndex, index)} disabled={revealed}>
+                <span>{String.fromCharCode(65 + index)}</span>{option}
               </button>
             ))}
           </div>
-          <button className="primary compact" disabled={picks[course] === undefined} onClick={nextCourse}>{course === courses.length - 1 ? "Завершить выбор" : "Дальше"} <span>→</span></button>
+          {wrong && <div className="ink-error">Портреты зашептались… Ответ неверный. Попробуй ещё раз.</div>}
+          {revealed && <div className="success"><b>Верно!</b> {quizzes[quizIndex].detail}<button onClick={next}>Продолжить ➜</button></div>}
+          <div className="paper-footer">Draco dormiens nunquam titillandus</div>
         </section>
       )}
 
-      {stage === 3 && (
-        <section className="card finale page-enter">
-          <p className="eyebrow">Финальная глава</p>
-          <div className="final-icon">⌂</div>
-          <h2>У меня есть для тебя<br /><em>одно предложение</em></h2>
-          <p className="invitation">Давай сбежим из обычного мира на сутки — в уютный загородный дом. Вкусная еда, прогулка, огоньки и только мы вдвоём.</p>
-          <label className="note-label">Есть аллергии, нелюбимые продукты или особые пожелания?</label>
-          <textarea value={restrictions} onChange={(event) => setRestrictions(event.target.value)} placeholder="Расскажи здесь — это важно…" />
-          <p className="question">Ты отправишься со мной в это маленькое приключение?</p>
-          <div className="final-actions">
-            <button className={accepted === true ? "accept active" : "accept"} onClick={() => setAccepted(true)}>Да, я с тобой ✦</button>
-            <button className={accepted === false ? "maybe active" : "maybe"} onClick={() => setAccepted(false)}>Мне нужно подумать</button>
+      {started && mealKey && (
+        <section className="choice-panel enter" key={current}>
+          <p className="eyebrow">Страница из зачарованного меню</p>
+          <h2>{meals[mealKey].title}</h2>
+          <p className="subtitle">{meals[mealKey].subtitle}</p>
+          <div className={`meal-grid ${meals[mealKey].options.length === 2 ? "two" : ""}`}>
+            {meals[mealKey].options.map((option, index) => (
+              <button key={option} className={choices[mealKey] === option ? "meal-card selected" : "meal-card"} onClick={() => chooseMeal(mealKey, option)}>
+                <div className="plate"><span>{mealKey === "drinks" ? ["♧", "♦", "✧"][index] : index === 0 ? "♨" : "≈"}</span></div>
+                <b>{option}</b>
+                <small>{mealKey === "drinks" ? "Налить в зачарованный бокал" : index === 0 ? "Дымок, угли и аромат специй" : "Нежное филе и золотистый гарнир"}</small>
+                <i>{choices[mealKey] === option ? "Выбрано ✓" : "Выбрать"}</i>
+              </button>
+            ))}
           </div>
-          {accepted !== null && (
-            <a className="send" href={`https://wa.me/?text=${message}`} target="_blank" rel="noreferrer">Отправить мой выбор в WhatsApp →</a>
-          )}
-          <p className="signature">Создано с магией специально для тебя</p>
+          <button className="gold-button" disabled={!choices[mealKey]} onClick={next}>Закрепить выбор <span>➜</span></button>
         </section>
+      )}
+
+      {started && current === "final" && (
+        <section className="parchment finale enter">
+          <div className="paper-noise" />
+          <p className="eyebrow dark">Последняя глава</p>
+          <div className="wax-seal">✦</div>
+          <h2>Приглашение в<br /><em>маленькое приключение</em></h2>
+          <p className="final-copy">Оставим обычный мир на сутки и отправимся в уютный загородный дом. Огоньки, вкусный ужин, прогулка и немного магии — только для нас двоих.</p>
+          <label htmlFor="wish">Что бы тебе хотелось ещё вкусить?</label>
+          <textarea id="wish" value={wish} onChange={e => setWish(e.target.value)} placeholder="Любое блюдо, десерт или тайное желание…" />
+          <h3>Ты со мной?</h3>
+          <div className="final-buttons">
+            <button className={accepted ? "yes active" : "yes"} onClick={() => setAccepted(true)}>Я с тобой ✦</button>
+            <button className="think" onClick={() => { setTrap(true); setTrapResult(""); setTrapAnswer(""); }}>Мне нужно подумать</button>
+          </div>
+          {accepted && <a className="send" href={`https://wa.me/?text=${summary}`} target="_blank" rel="noreferrer">Отправить выбор совиной почтой ➜</a>}
+        </section>
+      )}
+
+      {trap && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Последнее магическое испытание">
+          <div className="modal enter">
+            <button className="close" onClick={() => setTrap(false)} aria-label="Закрыть">×</button>
+            <div className="modal-rune">?</div>
+            <p className="eyebrow">Отказ отклонён Министерством магии</p>
+            <h2>Последний шанс подумать</h2>
+            <p>Назови номер хранилища, из которого Хагрид забрал философский камень.</p>
+            {!trapResult ? <><input value={trapAnswer} onChange={e => setTrapAnswer(e.target.value)} placeholder="Номер хранилища…" inputMode="numeric" onKeyDown={e => e.key === "Enter" && submitTrap()} /><button className="gold-button" onClick={submitTrap}>Проверить ответ</button></> : <div className="trap-result">{trapResult}</div>}
+          </div>
+        </div>
       )}
     </main>
   );
