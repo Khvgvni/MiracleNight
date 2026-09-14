@@ -218,8 +218,7 @@ export default function Home() {
   return (
     <main className="journey">
       <audio ref={audioRef} loop preload="metadata">
-        <source src="/MiracleNight/untitled.mp3" type="audio/mpeg" />
-        <source src="/untitled.mp3" type="audio/mpeg" />
+        <source src="/MiracleNight/Music_file.mp3" type="audio/mpeg" />
       </audio>
 
       <div className="grain" />
