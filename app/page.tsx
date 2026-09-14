@@ -105,7 +105,6 @@ const questions: Question[] = [
 ];
 
 const STORAGE_KEY = "little-journey-questionnaire-v1";
-
 const TRACK_SRC = "/MiracleNight/Music_file.mp3";
 
 export default function Home() {
@@ -243,8 +242,9 @@ export default function Home() {
       />
 
       <div className="grain" />
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
+      <div className="foliage foliage-1" />
+      <div className="foliage foliage-2" />
+      <div className="foliage foliage-3" />
 
       {!started ? (
         <section className="welcome screen-in">
@@ -270,7 +270,7 @@ export default function Home() {
             <span /> никаких правильных ответов · только твои вкусы <span />
           </div>
           {musicError && (
-            <div style={{ marginTop: 16, fontSize: 11, color: "#e8b0a0", letterSpacing: ".08em" }}>
+            <div style={{ marginTop: 14, fontSize: 11, color: "#e8b0a0", letterSpacing: ".08em" }}>
               музыка: {musicError}
             </div>
           )}
@@ -280,13 +280,16 @@ export default function Home() {
           <div className="monogram">✓</div>
           <div className="kicker">Готово</div>
           <h1>
-            Теперь я знаю
+            Спасибо тебе.
             <br />
-            <em>немного больше.</em>
+            <em>Ты прекрасна.</em>
           </h1>
           <p className="lead">
-            Спасибо. Остальное я оставлю за собой — маршрут, детали и несколько
-            маленьких сюрпризов.
+            Я это и так знаю, но приятно сказать ещё раз. Ты делаешь всё вокруг
+            светлее — просто тем, что ты есть.
+          </p>
+          <p className="lead muted">
+            А сейчас — улыбнись. Пожалуйста. Мне этого уже достаточно.
           </p>
           <div className="success-line">До встречи в дороге.</div>
         </section>
