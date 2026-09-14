@@ -106,10 +106,13 @@ const questions: Question[] = [
 
 const STORAGE_KEY = "little-journey-questionnaire-v1";
 
+const TRACK_SRC = "/MiracleNight/Music_file.mp3";
+
 export default function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [started, setStarted] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
+  const [musicError, setMusicError] = useState("");
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[] | string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -135,22 +138,35 @@ export default function Home() {
     return Array.isArray(v) ? v : v ? [v] : [];
   }, [answers, current.id]);
 
-  function start() {
-    setStarted(true);
+  function tryPlay() {
     const a = audioRef.current;
-    if (!a) return;
+    if (!a) {
+      setMusicError("audio element not found");
+      return;
+    }
     a.volume = 0.22;
     a.muted = false;
-    const playPromise = a.play();
-    if (playPromise) {
-      playPromise.then(() => setMusicOn(true)).catch(() => setMusicOn(false));
+    const p = a.play();
+    if (p) {
+      p.then(() => {
+        setMusicOn(true);
+        setMusicError("");
+      }).catch((err) => {
+        setMusicOn(false);
+        setMusicError(String(err && err.message ? err.message : err));
+      });
     }
+  }
+
+  function start() {
+    tryPlay();
+    setStarted(true);
   }
 
   function toggleMusic() {
     const a = audioRef.current;
     if (!a) return;
-    if (a.paused) a.play().then(() => setMusicOn(true)).catch(() => {});
+    if (a.paused) tryPlay();
     else {
       a.pause();
       setMusicOn(false);
@@ -217,9 +233,14 @@ export default function Home() {
 
   return (
     <main className="journey">
-      <audio ref={audioRef} loop preload="metadata">
-        <source src="/MiracleNight/Music_file.mp3" type="audio/mpeg" />
-      </audio>
+      <audio
+        ref={audioRef}
+        loop
+        preload="auto"
+        src={TRACK_SRC}
+        onError={() => setMusicError("track failed to load: " + TRACK_SRC)}
+        onCanPlay={() => setMusicError("")}
+      />
 
       <div className="grain" />
       <div className="ambient ambient-one" />
@@ -248,6 +269,11 @@ export default function Home() {
           <div className="welcome-note">
             <span /> никаких правильных ответов · только твои вкусы <span />
           </div>
+          {musicError && (
+            <div style={{ marginTop: 16, fontSize: 11, color: "#e8b0a0", letterSpacing: ".08em" }}>
+              музыка: {musicError}
+            </div>
+          )}
         </section>
       ) : submitted ? (
         <section className="welcome success-screen screen-in">
@@ -337,11 +363,7 @@ export default function Home() {
                 onClick={isLast ? submit : next}
                 disabled={!canContinue() || (isLast && submitting)}
               >
-                {isLast
-                  ? submitting
-                    ? "Сохраняю…"
-                    : "Отправить"
-                  : "Дальше"}{" "}
+                {isLast ? (submitting ? "Сохраняю…" : "Отправить") : "Дальше"}{" "}
                 <span>→</span>
               </button>
               {current.optional && !isLast && (
