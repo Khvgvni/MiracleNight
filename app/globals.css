@@ -266,7 +266,6 @@ textarea:focus{
   to{opacity:1;transform:none;filter:none}
 }
 
-/* ---------- Мобильная версия ---------- */
 @media(max-width:650px){
   .journey{
     padding:calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
