@@ -1,239 +1,108 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-type Quiz = { question: string; options: string[]; correct: number; detail: string };
+type Question = { id: string; eyebrow: string; title: string; hint?: string; type: "multi" | "single" | "text"; options?: string[]; optional?: boolean };
 
-const quizzes: Quiz[] = [
-  {
-    question: "Какой дракон достался Седрику Диггори в первом испытании Турнира Трёх Волшебников?",
-    options: ["Валлийский зелёный", "Шведский тупорылый", "Китайский огненный шар", "Венгерская хвосторога"], correct: 1,
-    detail: "Именно шведский тупорылый охранял золотое яйцо Седрика.",
-  },
-  {
-    question: "Какой предмет Дамблдор завещал Гермионе Грейнджер?",
-    options: ["Делюминатор", "Снитч", "Сказки барда Бидля", "Маховик времени"], correct: 2,
-    detail: "Книга со сказками скрывала знак Даров Смерти.",
-  },
-  {
-    question: "Из какого дерева была сделана палочка Драко Малфоя?",
-    options: ["Остролист", "Боярышник", "Тис", "Виноградная лоза"], correct: 1,
-    detail: "Боярышник, волос единорога и ровно десять дюймов.",
-  },
-  {
-    question: "Кому принадлежал Патронус в форме зайца?",
-    options: ["Полумне Лавгуд", "Джинни Уизли", "Чжоу Чанг", "Нимфадоре Тонкс"], correct: 0,
-    detail: "Патронус Полумны — серебряный заяц.",
-  },
-  {
-    question: "Как звали волшебника, создавшего первый Золотой снитч?",
-    options: ["Лудо Бэгмен", "Боумен Райт", "Кенниуорти Уисп", "Квентиус Умфравилль"], correct: 1,
-    detail: "Боумен Райт, искусный зачарователь металлов из Годриковой Впадины.",
-  },
+const submissionUrl = "https://script.google.com/macros/s/AKfycbwvYYOsVEP9AZISeJf3YwyxVJSHP-0RILCofz2sd2mkIfnvaT9dFi2xC6wgJO5qOiavjg/exec";
+
+const questions: Question[] = [
+  { id:"cuisine", eyebrow:"01 · Вкус", title:"Какая кухня тебе обычно ближе?", hint:"Можно выбрать несколько — я просто хочу знать, в какую сторону смотреть.", type:"multi", options:["Итальянская","Грузинская","Кавказская","Азиатская","Европейская","Русская","Мексиканская","Мне нравится разное"] },
+  { id:"main", eyebrow:"02 · Главное", title:"Что тебе хотелось бы видеть на столе?", hint:"Выбирай всё, что действительно любишь.", type:"multi", options:["Мясо","Птица","Рыба","Морепродукты","Овощи","Что-нибудь лёгкое","Лучше удиви меня"] },
+  { id:"vegetables", eyebrow:"03 · Овощи", title:"А с овощами как?", hint:"Можно отметить любимые и те, которые лучше не класть в корзину.", type:"multi", options:["Помидоры","Огурцы","Болгарский перец","Баклажан","Кабачок","Брокколи","Авокадо","Зелень","Лук","Чеснок","Грибы","Почти все люблю"] },
+  { id:"fruits", eyebrow:"04 · Фрукты", title:"Что взять с собой из фруктов?", hint:"Или можно просто написать свой вариант.", type:"multi", options:["Яблоки","Виноград","Клубника","Персики","Цитрусы","Бананы","Ягоды","Манго","Арбуз / дыня","Не принципиально"] },
+  { id:"drinks", eyebrow:"05 · Напитки", title:"Что налить в бокал или кружку?", hint:"Без правильных ответов. Просто хочу подготовить то, что тебе приятно.", type:"multi", options:["Вода","Минеральная вода","Сок","Лимонад","Тоник","Красное вино","Белое вино","Игристое","Пиво","Коктейль","Крепкий алкоголь","Алкоголь не пью"] },
+  { id:"coffee", eyebrow:"06 · Утро", title:"А утро начинается с…", hint:"Особенно важный вопрос для загородного дома.", type:"single", options:["Кофе","Чая","Травяного чая","Воды","Сначала проснуться, потом решим"] },
+  { id:"breakfast", eyebrow:"07 · Завтрак", title:"Что бы ты выбрала на спокойный завтрак?", type:"multi", options:["Яичница / омлет","Сырники","Каша","Круассаны / выпечка","Фрукты и ягоды","Сэндвичи","Что-нибудь лёгкое","Я не завтракаю"] },
+  { id:"mood", eyebrow:"08 · Атмосфера", title:"Какой должна быть атмосфера вечером?", hint:"Можно выбрать несколько.", type:"multi", options:["Огонь / камин","Тишина и лес","Музыка на фоне","Свечи и приглушённый свет","Прогулка","Долгие разговоры","Уют и плед","Никаких планов — просто по настроению"] },
+  { id:"music", eyebrow:"09 · Звук", title:"Что включить по дороге и вечером?", type:"multi", options:["Спокойную электронику","Атмосферную музыку","Акустику","Джаз","Инструментальную","Романтичную","Что-нибудь поживее","Иногда лучше тишина"] },
+  { id:"avoid", eyebrow:"10 · Важно", title:"А что тебе точно НЕ нравится?", hint:"Продукты, напитки, запахи, музыка — вообще что угодно. Поле можно оставить пустым.", type:"text", optional:true },
+  { id:"wish", eyebrow:"11 · От себя", title:"Есть маленькое пожелание к этой поездке?", hint:"Даже если это что-то совсем простое.", type:"text", optional:true },
 ];
 
-const meals = {
-  lunch: { title: "Обед в Большом зале", subtitle: "Что подать после дневных приключений?", options: ["Мясо на мангале", "Стейк из сёмги с картофелем"] },
-  dinner: { title: "Ужин при свечах", subtitle: "Можно выбрать сразу несколько вариантов", options: ["Мясо на мангале", "Стейки из сёмги", "Шампиньоны"] },
-  drinks: { title: "Выбор волшебных напитков", subtitle: "Можно выбрать сразу несколько вариантов", options: ["Белое вино", "Красное вино", "Джин с тоником"] },
-};
-
-const steps = ["quiz0", "lunch", "quiz1", "quiz2", "dinner", "quiz3", "drinks", "quiz4", "final"] as const;
+const STORAGE_KEY = "little-journey-questionnaire-v1";
 
 export default function Home() {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  const submissionUrl = "https://script.google.com/macros/s/AKfycbwvYYOsVEP9AZISeJf3YwyxVJSHP-0RILCofz2sd2mkIfnvaT9dFi2xC6wgJO5qOiavjg/exec";
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [started, setStarted] = useState(false);
-  const [musicOn, setMusicOn] = useState(false);
-  const [step, setStep] = useState(0);
-  const [wrong, setWrong] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-  const [choices, setChoices] = useState<Record<string, string | string[]>>({});
-  const [wish, setWish] = useState("");
-  const [accepted, setAccepted] = useState(false);
-  const [trap, setTrap] = useState(false);
-  const [trapAnswer, setTrapAnswer] = useState("");
-  const [trapResult, setTrapResult] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState(false);
+  const [started,setStarted] = useState(false);
+  const [musicOn,setMusicOn] = useState(false);
+  const [index,setIndex] = useState(0);
+  const [answers,setAnswers] = useState<Record<string,string[]|string>>({});
+  const [submitting,setSubmitting] = useState(false);
+  const [submitted,setSubmitted] = useState(false);
+  const [error,setError] = useState("");
 
-  const current = steps[step];
-  const progress = started ? ((step + 1) / steps.length) * 100 : 0;
+  useEffect(()=>{ try { const saved=localStorage.getItem(STORAGE_KEY); if(saved) setAnswers(JSON.parse(saved)); } catch {} },[]);
+  useEffect(()=>{ try { localStorage.setItem(STORAGE_KEY,JSON.stringify(answers)); } catch {} },[answers]);
 
-  function answerQuiz(index: number, selected: number) {
-    if (selected !== quizzes[index].correct) { setWrong(true); return; }
-    setWrong(false); setRevealed(true);
-  }
+  const current=questions[index];
+  const selected=useMemo(()=>{const v=answers[current.id];return Array.isArray(v)?v:v?[v]:[]},[answers,current.id]);
 
-  function next() { setRevealed(false); setWrong(false); setStep(value => Math.min(value + 1, steps.length - 1)); }
-
-  async function openLetter() {
+  function start(){
     setStarted(true);
-    if (!audioRef.current) return;
-    audioRef.current.volume = 0.28;
-    try { await audioRef.current.play(); setMusicOn(true); } catch { setMusicOn(false); }
+    const a=audioRef.current;
+    if(!a)return;
+    a.volume=.22;
+    a.play().then(()=>setMusicOn(true)).catch(()=>setMusicOn(false));
   }
-
-  async function toggleMusic() {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) {
-      try { await audioRef.current.play(); setMusicOn(true); } catch { setMusicOn(false); }
-    } else {
-      audioRef.current.pause();
-      setMusicOn(false);
-    }
+  function toggleMusic(){
+    const a=audioRef.current;
+    if(!a)return;
+    if(a.paused)a.play().then(()=>setMusicOn(true)).catch(()=>{});
+    else{a.pause();setMusicOn(false)}
   }
-
-  async function submitAnswers() {
-    if (submitting || submitted) return;
-    setSubmitting(true);
-    setSubmitError(false);
-    try {
-      await fetch(submissionUrl, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          name: "Кушпита Анна Сергеевна",
-          lunch: choices.lunch || "",
-          dinner: Array.isArray(choices.dinner) ? choices.dinner : [],
-          drinks: Array.isArray(choices.drinks) ? choices.drinks : [],
-          wish,
-          answer: "Я с тобой",
-        }),
-      });
-      setSubmitted(true);
-    } catch {
-      setSubmitError(true);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  function chooseMeal(key: keyof typeof meals, value: string) {
-    if (key === "lunch") { setChoices(prev => ({ ...prev, [key]: value })); return; }
-    setChoices(prev => {
-      const currentValues = Array.isArray(prev[key]) ? prev[key] as string[] : [];
-      const values = currentValues.includes(value) ? currentValues.filter(item => item !== value) : [...currentValues, value];
-      return { ...prev, [key]: values };
+  function choose(value:string){
+    setAnswers(prev=>{
+      if(current.type==="single")return {...prev,[current.id]:value};
+      const existing=Array.isArray(prev[current.id])?prev[current.id] as string[]:[];
+      return {...prev,[current.id]:existing.includes(value)?existing.filter(x=>x!==value):[...existing,value]};
     });
   }
+  function textChange(value:string){setAnswers(prev=>({...prev,[current.id]:value}))}
+  function canContinue(){return !!current.optional||selected.length>0}
+  function next(){if(canContinue()&&index<questions.length-1)setIndex(v=>v+1)}
+  function back(){if(index>0)setIndex(v=>v-1)}
 
-  function submitTrap() {
-    if (trapAnswer.trim() === "713") {
-      setTrapResult("Невероятно! Даже Гермиона впечатлена. Но приключение всё равно зовёт ✦");
-    } else {
-      setTrapResult("Увы, неверно. Магический договор активирован: «Я с тобой» выбрано автоматически ✦");
-    }
-    setAccepted(true);
-    window.setTimeout(() => setTrap(false), 2600);
+  async function submit(){
+    if(submitting||submitted)return;
+    setSubmitting(true);setError("");
+    const payload={source:"little-journey",submittedAt:new Date().toISOString(),...Object.fromEntries(Object.entries(answers).map(([k,v])=>[k,Array.isArray(v)?v.join(", "):v]))};
+    try{
+      await fetch(submissionUrl,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+      setSubmitted(true);localStorage.removeItem(STORAGE_KEY);
+    }catch{setError("Не удалось отправить ответы. Проверь соединение и попробуй ещё раз.")}
+    finally{setSubmitting(false)}
   }
 
-  const quizIndex = current.startsWith("quiz") ? Number(current.replace("quiz", "")) : -1;
-  const mealKey = (["lunch", "dinner", "drinks"] as string[]).includes(current) ? current as keyof typeof meals : null;
-
-  return (
-    <main className="world">
-      <audio ref={audioRef} src={`${basePath}/magic-theme.mp3`} loop preload="auto" />
-      <div
-        className="castle"
-        aria-hidden="true"
-        style={{ backgroundImage: `linear-gradient(180deg,rgba(3,5,10,.16),rgba(3,5,10,.5) 55%,#05070b 100%),url('${basePath}/wizard-castle.png')` }}
-      />
-      <div className="mist" aria-hidden="true" />
-      <div className="sparks" aria-hidden="true" />
-      <header>
-        <div className="crest"><span>✦</span><b>A</b><span>✦</span></div>
-        <div className="header-title">Официальное магическое приглашение</div>
-        <div className="step-count">{started ? `${step + 1} / ${steps.length}` : "Совиная почта"}</div>
+  return <main className="journey">
+    <audio ref={audioRef} src="/MiracleNight/music/untitled.mp3" loop preload="metadata"/>
+    <div className="grain"/><div className="ambient ambient-one"/><div className="ambient ambient-two"/>
+    {!started?<section className="welcome screen-in">
+      <div className="monogram">01</div><div className="kicker">Маленькое путешествие</div>
+      <h1>Перед дорогой<br/><em>есть одна просьба.</em></h1>
+      <p className="lead">Мы ненадолго оставим город позади. Будет дорога, загородный дом, природа, вкусный вечер и время без спешки.</p>
+      <p className="lead muted">Я хочу подготовить всё так, чтобы тебе было действительно хорошо. Поэтому — несколько простых вопросов.</p>
+      <button className="primary" onClick={start}>Начать путешествие <span>→</span></button>
+      <div className="welcome-note"><span/> никаких правильных ответов · только твои вкусы <span/></div>
+    </section>:submitted?<section className="welcome success-screen screen-in">
+      <div className="monogram">✓</div><div className="kicker">Готово</div>
+      <h1>Теперь я знаю<br/><em>немного больше.</em></h1>
+      <p className="lead">Спасибо. Остальное я оставлю за собой — маршрут, детали и несколько маленьких сюрпризов.</p>
+      <div className="success-line">До встречи в дороге.</div>
+    </section>:<section className="question-screen screen-in" key={current.id}>
+      <header className="topbar"><button className="back-link" onClick={back} disabled={index===0}>← назад</button>
+        <div className="counter">{String(index+1).padStart(2,"0")} <span>/ {String(questions.length).padStart(2,"0")}</span></div>
+        <button className={`music ${musicOn?"on":""}`} onClick={toggleMusic}>{musicOn?"♫":"♪"}</button>
       </header>
-      <div className="progress"><i style={{ width: `${progress}%` }} /></div>
-      {started && <button className="sound-toggle" onClick={toggleMusic} aria-label={musicOn ? "Выключить музыку" : "Включить музыку"} title={musicOn ? "Выключить музыку" : "Включить музыку"}>{musicOn ? "♫" : "♪"}<span>{musicOn ? "Музыка" : "Без звука"}</span></button>}
-
-      {!started && (
-        <section className="hero enter">
-          <div className="letter-seal">A</div>
-          <p className="eyebrow">Доставлено лично в руки</p>
-          <div className="recipient">Кушпита Анна Сергеевна</div>
-          <h1>Официальное<br /><em>приглашение</em></h1>
-          <p>Настоящим письмом Вы приглашаетесь в тайное загородное путешествие на сутки. Для подтверждения участия Вам надлежит пройти пять магических испытаний и составить меню предстоящего вечера.</p>
-          <button className="gold-button" onClick={openLetter}>Открыть письмо <span>➜</span></button>
-          <small>Торжественно обещаем: впереди только шалость</small>
-        </section>
-      )}
-
-      {started && quizIndex >= 0 && (
-        <section className="parchment enter" key={current}>
-          <div className="paper-noise" />
-          <p className="eyebrow dark">Магическое испытание {quizIndex + 1} из 5</p>
-          <div className="quiz-symbol">{["ϟ", "♞", "☄", "⌁", "⚡"][quizIndex]}</div>
-          <h2>{quizzes[quizIndex].question}</h2>
-          <div className="quiz-options">
-            {quizzes[quizIndex].options.map((option, index) => (
-              <button key={option} onClick={() => answerQuiz(quizIndex, index)} disabled={revealed}>
-                <span>{String.fromCharCode(65 + index)}</span>{option}
-              </button>
-            ))}
-          </div>
-          {wrong && <div className="ink-error">Портреты зашептались… Ответ неверный. Попробуй ещё раз.</div>}
-          {revealed && <div className="success"><b>Верно!</b> {quizzes[quizIndex].detail}<button onClick={next}>Продолжить ➜</button></div>}
-          <div className="paper-footer">Draco dormiens nunquam titillandus</div>
-        </section>
-      )}
-
-      {started && mealKey && (
-        <section className="choice-panel enter" key={current}>
-          <p className="eyebrow">Страница из зачарованного меню</p>
-          <h2>{meals[mealKey].title}</h2>
-          <p className="subtitle">{meals[mealKey].subtitle}</p>
-          <div className={`meal-grid ${meals[mealKey].options.length === 2 ? "two" : ""}`}>
-            {meals[mealKey].options.map((option, index) => (
-              <button key={option} className={(mealKey !== "lunch" ? Array.isArray(choices[mealKey]) && (choices[mealKey] as string[]).includes(option) : choices[mealKey] === option) ? "meal-card selected" : "meal-card"} onClick={() => chooseMeal(mealKey, option)}>
-                <div className="plate"><span>{mealKey === "drinks" ? ["♧", "♦", "✧"][index] : mealKey === "dinner" && index === 2 ? "♣" : index === 0 ? "♨" : "≈"}</span></div>
-                <b>{option}</b>
-                <small>{mealKey === "drinks" ? "Налить в зачарованный бокал" : mealKey === "dinner" && index === 2 ? "Румяные шампиньоны с ароматными травами" : index === 0 ? "Дымок, угли и аромат специй" : "Нежное филе и золотистый гарнир"}</small>
-                <i>{(mealKey !== "lunch" ? Array.isArray(choices[mealKey]) && (choices[mealKey] as string[]).includes(option) : choices[mealKey] === option) ? "Выбрано ✓" : "Выбрать"}</i>
-              </button>
-            ))}
-          </div>
-          <button className="gold-button" disabled={mealKey !== "lunch" ? !Array.isArray(choices[mealKey]) || (choices[mealKey] as string[]).length === 0 : !choices[mealKey]} onClick={next}>Закрепить выбор <span>➜</span></button>
-        </section>
-      )}
-
-      {started && current === "final" && (
-        <section className="parchment finale enter">
-          <div className="paper-noise" />
-          <p className="eyebrow dark">Последняя глава</p>
-          <div className="wax-seal">✦</div>
-          <h2>Приглашение в<br /><em>маленькое приключение</em></h2>
-          <p className="final-copy">Оставим обычный мир на сутки и отправимся в уютный загородный дом. Огоньки, вкусный ужин, прогулка и немного магии — только для нас двоих.</p>
-          <label htmlFor="wish">Что бы тебе хотелось ещё вкусить?</label>
-          <textarea id="wish" value={wish} onChange={e => setWish(e.target.value)} placeholder="Любое блюдо, десерт или тайное желание…" />
-          <h3>Ты со мной?</h3>
-          <div className="final-buttons">
-            <button className={accepted ? "yes active" : "yes"} onClick={() => setAccepted(true)}>Я с тобой ✦</button>
-            <button className="think" onClick={() => { setTrap(true); setTrapResult(""); setTrapAnswer(""); }}>Мне нужно подумать</button>
-          </div>
-          {accepted && !submitted && <button className="send" onClick={submitAnswers} disabled={submitting}>{submitting ? "Сова уже в пути…" : "Отправить ответы совиной почтой ➜"}</button>}
-          {submitted && <div className="submit-success">Ответы сохранены в магической книге ✦</div>}
-          {submitError && <div className="submit-error">Сова сбилась с пути. Попробуй отправить ещё раз.</div>}
-        </section>
-      )}
-
-      {trap && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Последнее магическое испытание">
-          <div className="modal enter">
-            <button className="close" onClick={() => setTrap(false)} aria-label="Закрыть">×</button>
-            <div className="modal-rune">?</div>
-            <p className="eyebrow">Отказ отклонён Министерством магии</p>
-            <h2>Последний шанс подумать</h2>
-            <p>Назови номер хранилища, из которого Хагрид забрал философский камень.</p>
-            {!trapResult ? <><input value={trapAnswer} onChange={e => setTrapAnswer(e.target.value)} placeholder="Номер хранилища…" inputMode="numeric" onKeyDown={e => e.key === "Enter" && submitTrap()} /><button className="gold-button" onClick={submitTrap}>Проверить ответ</button></> : <div className="trap-result">{trapResult}</div>}
-          </div>
-        </div>
-      )}
-    </main>
-  );
+      <div className="progress"><span style={{width:`${((index+1)/questions.length)*100}%`}}/></div>
+      <div className="question-wrap">
+        <div className="kicker">{current.eyebrow}</div><h2>{current.title}</h2>{current.hint&&<p className="hint">{current.hint}</p>}
+        {current.type!=="text"&&<div className="options">{current.options?.map(o=><button key={o} className={`option ${selected.includes(o)?"selected":""}`} onClick={()=>choose(o)}><span className="option-dot"/><span>{o}</span><b>{selected.includes(o)?"✓":""}</b></button>)}</div>}
+        {current.type==="text"&&<textarea value={typeof answers[current.id]==="string"?answers[current.id] as string:""} onChange={e=>textChange(e.target.value)} placeholder={current.id==="avoid"?"Например: не люблю оливки, слишком сладкие напитки…":"Можно написать даже одно предложение."} autoFocus/>}
+        {index===0&&<div className="tiny-note">Можно выбрать несколько вариантов</div>}
+        <div className="bottom-actions"><button className="primary" onClick={next} disabled={!canContinue()}>{index===questions.length-1?"Завершить":"Дальше"} <span>→</span></button>{current.optional&&<button className="skip" onClick={next}>Пропустить</button>}</div>
+        {index===questions.length-1&&<div className="send-area"><button className="send-button" onClick={submit} disabled={submitting}>{submitting?"Сохраняю…":"Отправить ответы"}</button>{error&&<p>{error}</p>}</div>}
+      </div>
+    </section>}
+  </main>
 }
