@@ -246,6 +246,23 @@ export default function Home() {
       <div className="foliage foliage-2" />
       <div className="foliage foliage-3" />
 
+      <div className="leaves" aria-hidden="true">
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span
+            key={i}
+            className={`leaf leaf-${(i % 5) + 1}`}
+            style={{
+              left: `${(i * 7 + 3) % 100}%`,
+              animationDelay: `${(i * 1.3) % 18}s`,
+              animationDuration: `${14 + (i % 7) * 2.5}s`,
+              fontSize: `${14 + (i % 4) * 6}px`,
+            }}
+          >
+            {["🍃", "🌿", "🍂", "🍁", "🌱"][i % 5]}
+          </span>
+        ))}
+      </div>
+
       {!started ? (
         <section className="welcome screen-in">
           <div className="monogram">01</div>
