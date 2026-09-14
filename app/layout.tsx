@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Официальное приглашение для Анны Сергеевны",
-  description: "Персональное магическое приглашение для Кушпиты Анны Сергеевны.",
+  title: "Что-то важное ",
+  description: "Что-то важное ",
   openGraph: {
-    title: "Официальное приглашение для Анны Сергеевны",
-    description: "Совиная почта доставила персональное магическое приглашение.",
+    title: "Что-то важное ",
+    description: "Что-то важное ",
     images: ["/wizard-castle.png"],
   },
   icons: {
